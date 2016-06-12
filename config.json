@@ -1,0 +1,7 @@
+{
+    "basedir": "/home/tlin/notebooks/data/",
+    "data": {
+        "test1": ["in/test1.fastq.bz2"],
+        "test2": ["in/test2.fastq.bz2"]
+    }
+}
