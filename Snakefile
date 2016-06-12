@@ -6,27 +6,35 @@ from os.path import join
 # Gobals  ---------------------------------------------------------------------
 configfile: "config.json"
 
+# define root path
 root_dir = config["basedir"]
+
+# define basic input
+in_dir = join(root_dir, "in")
+
+# define basic output
 out_dir = join(root_dir, "out")
-raw_data_dir = join(out_dir, "bunzip")
 tmp_dir = join(out_dir, "userless")
+
+# define detailed output
+raw_data_dir = join(out_dir, "bunzip")
 fastqc_dir = join(out_dir, "fastqc")
+
+# get files in a folder
+origin_data_files = [f.split(".")[0]
+                     for f in os.listdir(in_dir)]
 
 # Rules -----------------------------------------------------------------------
 rule all:
     input:
-        expand(raw_data_dir + "/{sample}.fastq",
-               sample=config['data']),
-        expand(tmp_dir + "/{sample}_fastqc/",
-               sample=config['data'])
+        expand(join(raw_data_dir, "{data}.fastq"), data=origin_data_files),
+        expand(tmp_dir + "/{sample}_fastqc/", sample=origin_data_files)
 
 rule bunzip:
     input:
-        lambda wildcards: expand("{basedir}{data}",
-                                 basedir=config["basedir"],
-                                 data=config["data"][wildcards.data])
+        expand(join(in_dir, "{data}.fastq.bz2"), data=origin_data_files)
     output:
-        raw_data_dir + "/{data}.fastq"
+        join(raw_data_dir, "{data}.fastq")
     threads:
         1
     shell:
@@ -34,13 +42,13 @@ rule bunzip:
 
 rule fastqc:
     input:
-        fastq = raw_data_dir + "/{sample}.fastq"
+        fastq = join(raw_data_dir, "{sample}.fastq")
     output:
-        tmp_dir + "/{sample}_fastqc/"
+        join(tmp_dir, "{sample}_fastqc/")
     params:
         dir = fastqc_dir
     log:
-        fastqc_dir + "/fastqc.log"
+        join(fastqc_dir, "fastqc.log")
     threads:
         2
     shell:

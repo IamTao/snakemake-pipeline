@@ -1,9 +1,5 @@
 {
     "basedir": "/home/tlin/notebooks/data/",
     "num_threads": 4,
-    "size_memory": 100,
-    "data": {
-        "test1": ["in/test1.fastq.bz2"],
-        "test2": ["in/test2.fastq.bz2"]
-    }
+    "size_memory": 100
 }
