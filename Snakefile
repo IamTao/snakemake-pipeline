@@ -1,15 +1,23 @@
+# -*- coding: utf-8 -*-
+#
 import os
 from os.path import join
 
+# Gobals  ---------------------------------------------------------------------
 configfile: "config.json"
 
+root_dir = config["basedir"]
+out_dir = join(root_dir, "out")
+raw_data_dir = join(out_dir, "bunzip")
+tmp_dir = join(out_dir, "userless")
+fastqc_dir = join(out_dir, "fastqc")
+
+# Rules -----------------------------------------------------------------------
 rule all:
     input:
-        expand("{basedir}out/bunzip/{sample}.fastq",
-               basedir=config["basedir"],
+        expand(raw_data_dir + "/{sample}.fastq",
                sample=config['data']),
-        expand("{basedir}out/useless/{sample}_fastqc/",
-               basedir=config["basedir"],
+        expand(tmp_dir + "/{sample}_fastqc/",
                sample=config['data'])
 
 rule bunzip:
@@ -18,9 +26,7 @@ rule bunzip:
                                  basedir=config["basedir"],
                                  data=config["data"][wildcards.data])
     output:
-        "{basedir}out/bunzip/{data}.fastq"
-    log:
-        "{basedir}out/{data}.log"
+        raw_data_dir + "/{data}.fastq"
     threads:
         1
     shell:
@@ -28,14 +34,14 @@ rule bunzip:
 
 rule fastqc:
     input:
-        fastq = "{basedir}out/bunzip/{sample}.fastq"
+        fastq = raw_data_dir + "/{sample}.fastq"
     output:
-        "{basedir}out/useless/{sample}_fastqc/"
+        tmp_dir + "/{sample}_fastqc/"
     params:
-        dir = "{basedir}out/fastqc"
+        dir = fastqc_dir
     log:
-        "fastqc.log"
+        fastqc_dir + "/fastqc.log"
     threads:
         2
     shell:
-        "fastqc -q -t {threads} --outdir {params.dir} {input.fastq} > {params.dir}/{log}"
+        "fastqc -q -t {threads} --outdir {params.dir} {input.fastq} > {log}"
