@@ -6,50 +6,79 @@ from os.path import join
 # Gobals  ---------------------------------------------------------------------
 configfile: "config.json"
 
+# define species
+"""0: at, 1:hg, 2:mm"""
+species = config["species"][1]
+
 # define root path
 root_dir = config["basedir"]
 
 # define basic input
 in_dir = join(root_dir, "in")
+gene_dir = join(in_dir, "gene", species)
+sample_dir = join(in_dir, "sample")
 
 # define basic output
 out_dir = join(root_dir, "out")
 tmp_dir = join(out_dir, "userless")
 
-# define detailed output
-raw_data_dir = join(out_dir, "bunzip")
-fastqc_dir = join(out_dir, "fastqc")
-
 # get files in a folder
-origin_data_files = [f.split(".")[0]
-                     for f in os.listdir(in_dir)]
+"""origin input: xxx.bt2, expected output: xxx"""
+gene_file = os.listdir(gene_dir)[0].split(".")[0]
+gene_file_path = join(gene_dir, gene_file)
+
+# get all case of treatments
+batches = config["batch"]
+bowtie2_tests = []
+bowtie2_tasks = []
+macs2_tests = []
+macs2_treatments = []
+macs2_control = []
+
+for k, v in batches.items():
+    treatment = set(v["treatment"])
+    control = set(v["control"])
+    bowtie2_tasks += treatment
+    bowtie2_tasks += control
+    bowtie2_tests += [k] * (len(treatment) + len(control))
+    macs2_tests += [k] * 2 * len(v["treatment"])
+    macs2_treatments += v["treatment"]
+    macs2_control += v["control"]
 
 # Rules -----------------------------------------------------------------------
 rule all:
     input:
-        expand(join(raw_data_dir, "{data}.fastq"), data=origin_data_files),
-        expand(tmp_dir + "/{sample}_fastqc/", sample=origin_data_files)
+        expand(join(out_dir, "{test}/bowtie2", "{task}.sam"),
+               test=bowtie2_tests,
+               task=bowtie2_tasks),
+        expand(join(out_dir, "{test}/macs2", "{treatment}__{control}/"),
+               test=macs2_tests,
+               treatment=macs2_treatments,
+               control=macs2_control)
 
-rule bunzip:
+rule bowtie2:
     input:
-        expand(join(in_dir, "{data}.fastq.bz2"), data=origin_data_files)
+        join(sample_dir, "{test}/{task}.fastq.gz")
     output:
-        join(raw_data_dir, "{data}.fastq")
-    threads:
-        1
-    shell:
-        "bunzip2 -d -c {input} > {output}"
-
-rule fastqc:
-    input:
-        fastq = join(raw_data_dir, "{sample}.fastq")
-    output:
-        join(tmp_dir, "{sample}_fastqc/")
+        join(out_dir, "{test}/bowtie2", "{task}.sam")
     params:
-        dir = fastqc_dir
-    log:
-        join(fastqc_dir, "fastqc.log")
+        gene = gene_file_path
     threads:
-        2
+        4
     shell:
-        "fastqc -q -t {threads} --outdir {params.dir} {input.fastq} > {log}"
+        "bowtie2 --threads 4 -x {params.gene} -U {input} -S {output}"
+
+rule macs2:
+    input:
+        treatment = join(out_dir, "{test}/bowtie2", "{treatment}.sam"),
+        control = join(out_dir, "{test}/bowtie2", "{control}.sam")
+    output:
+        join(out_dir, "{test}/macs2", "{treatment}__{control}/")
+    params:
+        dir = join(out_dir, "{test}/macs2", "{treatment}__{control}/")
+    threads:
+        4
+    shell:
+        """
+        macs2 callpeak -t {input.treatment} -c {input.control} -f SAM -g hs -n {params.dir} -B -q 0.01
+        """
