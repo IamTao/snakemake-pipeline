@@ -7,8 +7,13 @@ from os.path import join
 configfile: "config.json"
 
 # define species
-"""0: at, 1:hg, 2:mm"""
-species = config["species"][1]
+"""0: at, 1:hg, 2:mm
+Please modify the correspond species in the config.json
+"""
+species = config["species"][config["aspecies"]]
+
+# define num of thread
+num_threads = config["num_threads"]
 
 # define root path
 root_dir = config["basedir"]
@@ -66,7 +71,7 @@ rule bowtie2:
     threads:
         4
     shell:
-        "bowtie2 --threads 4 -x {params.gene} -U {input} -S {output}"
+        "bowtie2 --threads " + num_threads + " -x {params.gene} -U {input} -S {output}"
 
 rule macs2:
     input:
@@ -74,11 +79,7 @@ rule macs2:
         control = join(out_dir, "{test}/bowtie2", "{control}.sam")
     output:
         join(out_dir, "{test}/macs2", "{treatment}__{control}/")
-    params:
-        dir = join(out_dir, "{test}/macs2", "{treatment}__{control}/")
     threads:
         4
     shell:
-        """
-        macs2 callpeak -t {input.treatment} -c {input.control} -f SAM -g hs -n {params.dir} -B -q 0.01
-        """
+        "macs2 callpeak -t {input.treatment} -c {input.control} -f SAM -g hs -n {output} -B -q 0.01"
