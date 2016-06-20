@@ -33,39 +33,24 @@ gene_file = os.listdir(gene_dir)[0].split(".")[0]
 gene_file_path = join(gene_dir, gene_file)
 
 # get all case of treatments
-batches = config["batch"]
-bowtie2_tests = []
-bowtie2_tasks = []
-macs2_tests = []
-macs2_treatments = []
-macs2_control = []
-
-for k, v in batches.items():
-    treatment = set(v["treatment"])
-    control = set(v["control"])
-    bowtie2_tasks += treatment
-    bowtie2_tasks += control
-    bowtie2_tests += [k] * (len(treatment) + len(control))
-    macs2_tests += [k] * 2 * len(v["treatment"])
-    macs2_treatments += v["treatment"]
-    macs2_control += v["control"]
+batches = config["batches"]
+treatment = batches["treatment"]
+control = batches["control"]
 
 # Rules -----------------------------------------------------------------------
 rule all:
     input:
-        expand(join(out_dir, "{test}/bowtie2", "{task}.sam"),
-               test=bowtie2_tests,
-               task=bowtie2_tasks),
-        expand(join(out_dir, "{test}/macs2", "{treatment}__{control}/"),
-               test=macs2_tests,
-               treatment=macs2_treatments,
-               control=macs2_control)
+        expand(join(out_dir, "bowtie2", "{batch}.sam"),
+               batch=set(treatment + control)),
+        expand(join(out_dir, "macs2", "{trea}___{cont}/"),
+               trea=treatment,
+               cont=control)
 
 rule bowtie2:
     input:
-        join(sample_dir, "{test}/{task}.fastq.gz")
+        join(sample_dir, "{batch}.fastq.gz")
     output:
-        join(out_dir, "{test}/bowtie2", "{task}.sam")
+        join(out_dir, "bowtie2", "{batch}.sam")
     params:
         gene = gene_file_path
     threads:
@@ -75,11 +60,14 @@ rule bowtie2:
 
 rule macs2:
     input:
-        treatment = join(out_dir, "{test}/bowtie2", "{treatment}.sam"),
-        control = join(out_dir, "{test}/bowtie2", "{control}.sam")
+        t = join(out_dir, "bowtie2", "{trea}.sam"),
+        c = join(out_dir, "bowtie2", "{cont}.sam")
     output:
-        join(out_dir, "{test}/macs2", "{treatment}__{control}/")
+        join(out_dir, "macs2", "{trea}___{cont}/")
     threads:
         4
-    shell:
-        "macs2 callpeak -t {input.treatment} -c {input.control} -f SAM -g hs -n {output} -B -q 0.01"
+    run:
+        treat = input.t.split("/")[-1]
+        contro = input.c.split("/")[-1]
+        if len(set(treat) & set(contro)) > 0:
+            shell("macs2 callpeak -t {input.t} -c {input.c} -f SAM -g hs -n {output} -B -q 0.01")

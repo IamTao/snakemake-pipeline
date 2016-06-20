@@ -2,15 +2,9 @@
     "basedir": "/home/tlin/notebooks/data/",
     "species": ["at", "hg", "mm"],
     "aspecies": 1,
-    "batch": {
-        "test1": {
-            "treatment": ["GSM798423_MCF7_1_IP_chr17"],
-            "control": ["GSM798440_MCF7_Input_chr17"]
-        },
-        "test2": {
-            "treatment": ["GSM798423_MCF7_1_IP_chr17"],
-            "control": ["GSM798440_MCF7_Input_chr17"]
-        }
+    "batches": {
+        "treatment": ["GSM798423_MCF7_1_IP_chr17", "GSM798423_MCF7_1_IP_chr170"],
+        "control": ["GSM798440_MCF7_Input_chr17", "GSM798440_MCF7_Input_chr170"]
     },
     "num_threads": "4",
     "size_memory": 100
